@@ -1,0 +1,14 @@
+{% extends "layout.html" %}
+{% block title %}Home{% endblock %}
+{% block head %}
+  {{ super() }}
+{% endblock %}
+{% block content %}
+  <h1>Home</h1>
+  <form action="/calculate">
+    <label for="number">Number:</label><br>
+    <input type="text" id="number" name="number"><br>
+    <br>
+    <input type="submit" value="Submit">
+  </form> 
+{% endblock %}
