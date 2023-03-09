@@ -1,131 +1,44 @@
-from flask import Flask, render_template, request, redirect, url_for, session
-
-from flask_mysqldb import MySQL
-
-import MySQLdb.cursors
-
-import re
-
-
+from flask import Flask, render_template, request, redirect, url_for, flash
 
 app = Flask(__name__)
+app.secret_key = 'secret'
 
+ORGANIZATIONS = ['Club A', 'Club B', 'Club C', 'Club D', 'Club E']
+registrations = {}
 
+@app.route('/', methods=['GET'])
+def home():
+    return render_template('home.html', orgs=ORGANIZATIONS)
 
-app.secret_key = 'your secret key'
-
-
-app.config['MYSQL_HOST'] = 'localhost'
-
-app.config['MYSQL_USER'] = 'root'
-
-app.config['MYSQL_PASSWORD'] = 'your password'
-
-app.config['MYSQL_DB'] = 'geeklogin'
-
-
-mysql = MySQL(app)
-
-
-@app.route('/')
-
-@app.route('/login', methods =['GET', 'POST'])
-
-def login():
-
-    msg = ''
-
-    if request.method == 'POST' and 'username' in request.form and 'password' in request.form:
-
-        username = request.form['username']
-
-        password = request.form['password']
-
-        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-
-        cursor.execute('SELECT * FROM accounts WHERE username = % s AND password = % s', (username, password, ))
-
-        account = cursor.fetchone()
-
-    if account:
-
-        session['loggedin'] = True
-
-        session['id'] = account['id']
-
-        session['username'] = account['username']
-
-        msg = 'Logged in successfully !'
-
-        return render_template('index.html', msg = msg)
-
-    else:
-
-        msg = 'Incorrect username / password !'
-
-        return render_template('login.html', msg = msg)
-
-
-@app.route('/logout')
-
-def logout():
-
-    session.pop('loggedin', None)
-
-    session.pop('id', None)
-
-    session.pop('username', None)
-
-    return redirect(url_for('login'))
-
-
-@app.route('/register', methods =['GET', 'POST'])
-
+@app.route('/register', methods=['POST'])
 def register():
-
-    msg = ''
-
-    if request.method == 'POST' and 'username' in request.form and 'password' in request.form and 'email' in request.form :
-
-        username = request.form['username']
-
-        password = request.form['password']
-
-        email = request.form['email']
-
-        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-
-        cursor.execute('SELECT * FROM accounts WHERE username = % s', (username, ))
-
-        account = cursor.fetchone()
-
-    if account:
-
-        msg = 'Account already exists !'
-
-    elif not re.match(r'[^@]+@[^@]+\.[^@]+', email):
-
-        msg = 'Invalid email address !'
-
-    elif not re.match(r'[A-Za-z0-9]+', username):
-
-        msg = 'Username must contain only characters and numbers !'
-
-    elif not username or not password or not email:
-
-        msg = 'Please fill out the form !'
+    name = request.form.get('name')
+    org = request.form.get('org')
     
+    if not name:
+        flash('Please enter your name.')
+        return redirect(url_for('home'))
 
-    elif request.method == 'POST':
+    if not org:
+        flash('Please select an organization.')
+        return redirect(url_for('home'))
 
-        msg = 'Please fill out the form !'
+    if org not in ORGANIZATIONS:
+        flash('Invalid organization.')
+        return redirect(url_for('home'))
 
-        return render_template('register.html', msg = msg)
-
+    # Check if user already exists
+    if name in registrations:
+        flash(f'{name} is already registered for {registrations[name]}.')
     else:
+        registrations[name] = org
+        flash(f'{name} has been registered for {org}.')
 
-        cursor.execute('INSERT INTO accounts VALUES (NULL, % s, % s, % s)', (username, password, email, ))
+    return redirect(url_for('registered_students'))
 
-        mysql.connection.commit()
+@app.route('/registered', methods=['GET'])
+def registered_students():
+    return render_template('registered.html', students=registrations.items())
 
-        msg = 'You have successfully registered !'
+if __name__ == '__main__':
+    app.run(debug=True)
